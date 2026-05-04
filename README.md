@@ -1,50 +1,24 @@
-# Welcome to your Expo app 👋
+# Cara Pakainya:
+1. Buka file SigapID di VS Code buka file supabase yang ada di dalam SigapID.
+2. Lalu buka profiles.sql dan copy semua.
+3. Lalu buka website [supabase](https://supabase.com/) buat project nama bebas.
+4. Lalu buka SQL Editor yang ada di website supabase paste disitu profiles.sql yang telah dicopy tadi.
+5. Lalu rename .env.example menjadi .env lalu masukan supabase url dan publishable key kalian.
+6. Buka terminal di VS Code ketik: npm install.
+7. Bisa Ketik lagi : npx expo install.
+8. Lalu Ketik lagi : npx expo start -c
+9. Terakhir akan muncul qr, download Expo Go di playstore dan scan
+10. Selamat Mencoba.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Preview
 
-## Get started
+<div align="center">
 
-1. Install dependencies
+| | |
+| :---: | :---: |
+| <img src="https://github.com/user-attachments/assets/066ae073-43bf-43c6-a016-c0708f250b31" width="200" /><br>1. Halaman Login | <img src="https://github.com/user-attachments/assets/cf51e2e4-2301-4407-88ca-66e4f0767389" width="200" /><br>2. Halaman Register |
+| <img src="https://github.com/user-attachments/assets/618297f5-344c-4713-9ea5-4a54e5ceae2f" width="200" /><br>3. Home Pelapor | <img src="https://github.com/user-attachments/assets/eda78fc2-b12f-476e-8d22-bf23848ad32f" width="200" /><br>4. Home Operator |
+| <img src="https://github.com/user-attachments/assets/7045c7d5-aaf1-416f-bac6-716d2f4c28e0" width="200" /><br>5. Detail Tracking | <img src="https://github.com/user-attachments/assets/062eab7c-30b2-45f0-8819-8890ab7eb9fc" width="200" /><br>6. Halaman Pesan |
+| <img src="https://github.com/user-attachments/assets/8c42ee2f-7fc0-4617-8f52-09840c7c127d" width="200" /><br>7. Halaman History | <img src="https://github.com/user-attachments/assets/7a7cc35e-4fb2-41c2-9d8c-0a6e458444bd" width="200" /><br>8. Halaman Profile |
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+</div>
