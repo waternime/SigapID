@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { Profile, UserRole } from "@/types";
+import { Profile, UnitType, UserRole } from "@/types";
 import { supabase } from "@/utils/supabase";
 
 interface AuthState {
@@ -25,6 +25,7 @@ interface AuthContextValue extends AuthState {
     password: string,
     fullName: string,
     role: UserRole,
+    unitType?: UnitType | null,
   ) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: (userId?: string) => Promise<Profile | null>;
@@ -97,9 +98,17 @@ function isUserRole(value: unknown): value is UserRole {
   return value === "reporter" || value === "dispatcher";
 }
 
+function isUnitType(value: unknown): value is UnitType {
+  return value === "police" || value === "ambulance" || value === "firefighter";
+}
+
 async function createMissingProfile(user: User): Promise<Profile> {
   const metadata = user.user_metadata ?? {};
   const role = isUserRole(metadata.role) ? metadata.role : "reporter";
+  const unitType =
+    role === "dispatcher" && isUnitType(metadata.unit_type)
+      ? metadata.unit_type
+      : null;
   const fullName =
     typeof metadata.full_name === "string" && metadata.full_name.trim()
       ? metadata.full_name.trim()
@@ -110,6 +119,7 @@ async function createMissingProfile(user: User): Promise<Profile> {
     email: user.email ?? "",
     full_name: fullName,
     role,
+    unit_type: unitType,
     phone: "",
     avatar_url: "",
   };
@@ -207,11 +217,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
 
+      if (_event === "INITIAL_SESSION") {
+        return;
+      }
+
       setState((current) => ({
         ...current,
         session,
         profile: session ? current.profile : null,
-        initializing: false,
+        initializing: session ? current.initializing : false,
       }));
     });
 
@@ -255,6 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string,
       fullName: string,
       role: UserRole,
+      unitType?: UnitType | null,
     ) => {
       setState((current) => ({ ...current, loading: true }));
 
@@ -265,6 +280,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             full_name: fullName,
             role,
+            unit_type: role === "dispatcher" ? unitType : null,
           },
         },
       });

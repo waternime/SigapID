@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/utils/supabase";
 
-const heartbeatMs = 60_000;
+const heartbeatMs = 20_000;
 
 export function useOperatorPresence() {
   const { profile } = useAuth();

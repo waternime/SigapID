@@ -1,4 +1,9 @@
-import { EmergencyStatus, EmergencyType } from "@/types";
+import {
+  EmergencyStatus,
+  EmergencyType,
+  UnitDispatchStatus,
+  UnitType,
+} from "@/types";
 
 const emergencyTypeLabels: Record<EmergencyType, string> = {
   fire: "Kebakaran",
@@ -22,12 +27,35 @@ const emergencyStatusLabels: Record<EmergencyStatus, string> = {
   rejected: "Ditolak",
 };
 
+const unitTypeLabels: Record<UnitType, string> = {
+  police: "Polisi",
+  ambulance: "Ambulans",
+  firefighter: "Pemadam",
+};
+
+const unitDispatchStatusLabels: Record<UnitDispatchStatus, string> = {
+  sent: "Dikirim",
+  accepted: "Diterima petugas",
+  on_route: "Dalam perjalanan",
+  arrived: "Tiba di lokasi",
+  completed: "Selesai",
+  cancelled: "Dibatalkan",
+};
+
 export function emergencyTypeLabel(type: EmergencyType) {
   return emergencyTypeLabels[type] ?? type;
 }
 
 export function emergencyStatusLabel(status: EmergencyStatus) {
   return emergencyStatusLabels[status] ?? status;
+}
+
+export function unitTypeLabel(type?: UnitType | null) {
+  return type ? unitTypeLabels[type] ?? type : "Unit";
+}
+
+export function unitDispatchStatusLabel(status?: UnitDispatchStatus | null) {
+  return status ? unitDispatchStatusLabels[status] ?? status : "Belum dikirim";
 }
 
 export function formatRelativeTime(value: string) {

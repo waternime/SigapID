@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, View, ViewProps } from "react-native";
-import { colors, radius, shadow, spacing } from "@/theme";
+import { radius, shadow, spacing } from "@/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 interface CardProps extends ViewProps {
   elevated?: boolean;
@@ -14,10 +15,13 @@ export const Card: React.FC<CardProps> = ({
   children,
   ...rest
 }) => {
+  const { palette } = useAppTheme();
+
   return (
     <View
       style={[
         styles.card,
+        { backgroundColor: palette.card, borderColor: palette.border },
         elevated && shadow.sm,
         padding !== 0 && { padding: spacing[padding] },
         style,
@@ -31,9 +35,7 @@ export const Card: React.FC<CardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
   },
 });

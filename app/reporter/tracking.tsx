@@ -1,12 +1,22 @@
 import { Href, router, useLocalSearchParams } from "expo-router";
+import { useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import {
   useEmergencyActions,
   useEmergencyReport,
   useReporterReports,
 } from "@/hooks/useEmergencyReports";
-import { emergencyStatusLabel, emergencyTypeLabel, formatRelativeTime } from "@/utils/format";
-import { showApkOnlyFeature } from "@/utils/nativeFeatures";
+import { useReportDispatches } from "@/hooks/useUnitDispatches";
+import { useCallInvitationActions } from "@/hooks/useCallInvitations";
+import { useAppNotification } from "@/components/app/AppNotification";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import {
+  emergencyStatusLabel,
+  emergencyTypeLabel,
+  formatRelativeTime,
+  unitDispatchStatusLabel,
+  unitTypeLabel,
+} from "@/utils/format";
 import { colors, spacing, typography } from "@/theme";
 import {
   Card,
@@ -19,16 +29,40 @@ import {
   navigateTo,
 } from "@/components/app/MockAppUI";
 
+type TrackingBusyAction = "chat" | "finish" | "location" | "sensor";
+
 export default function ReporterTracking() {
+  const { palette, mode } = useAppTheme();
+  const { showNotification } = useAppNotification();
   const params = useLocalSearchParams<{ reportId?: string }>();
   const { activeReport, loading: activeLoading } = useReporterReports();
   const targetReportId = params.reportId ?? activeReport?.id;
   const { report, loading, error, reload } = useEmergencyReport(targetReportId);
+  const { latestActiveDispatch } = useReportDispatches(targetReportId);
   const { finishReport, updateReportLocation } = useEmergencyActions();
+  const { inviteCall } = useCallInvitationActions();
   const active = report ?? activeReport;
+  const [busyAction, setBusyAction] = useState<TrackingBusyAction | null>(null);
+  const busyActionRef = useRef<TrackingBusyAction | null>(null);
+
+  const beginAction = (action: TrackingBusyAction) => {
+    if (busyActionRef.current) return false;
+
+    busyActionRef.current = action;
+    setBusyAction(action);
+    return true;
+  };
+
+  const endAction = (action: TrackingBusyAction) => {
+    if (busyActionRef.current !== action) return;
+
+    busyActionRef.current = null;
+    setBusyAction(null);
+  };
 
   const handleFinish = async () => {
     if (!active?.id) return;
+    if (!beginAction("finish")) return;
 
     try {
       await finishReport(active.id);
@@ -38,6 +72,7 @@ export default function ReporterTracking() {
         "Gagal menyelesaikan laporan",
         finishError instanceof Error ? finishError.message : "Terjadi kesalahan.",
       );
+      endAction("finish");
     }
   };
 
@@ -47,6 +82,8 @@ export default function ReporterTracking() {
       return;
     }
 
+    if (!beginAction("chat")) return;
+
     router.push({
       pathname: "/reporter/chat",
       params: { reportId: active.id },
@@ -55,22 +92,52 @@ export default function ReporterTracking() {
 
   const openCall = async () => {
     if (!active?.id) return;
-    showApkOnlyFeature("Panggilan");
+
+    try {
+      await inviteCall(active.id, active.call_room ?? `sigapid-${active.id}`);
+      showNotification({
+        title: "Panggilan dikirim",
+        message: "Menunggu operator menerima panggilan.",
+        tone: "info",
+      });
+      router.push({
+        pathname: "/reporter/call",
+        params: { reportId: active.id },
+      });
+    } catch (callError) {
+      Alert.alert(
+        "Gagal memulai panggilan",
+        callError instanceof Error ? callError.message : "Terjadi kesalahan.",
+      );
+    }
   };
 
   const refreshLocation = async () => {
     if (!active?.id) return;
+    if (!beginAction("location")) return;
 
     try {
       await updateReportLocation(active.id);
       await reload();
-      Alert.alert("Lokasi diperbarui", "Koordinat laporan sudah diperbarui.");
+      showNotification({
+        title: "Lokasi diperbarui",
+        message: "Koordinat laporan sudah diperbarui.",
+        tone: "success",
+      });
     } catch (locationError) {
       Alert.alert(
         "Gagal memperbarui lokasi",
         locationError instanceof Error ? locationError.message : "Terjadi kesalahan.",
       );
+    } finally {
+      endAction("location");
     }
+  };
+
+  const openSensorAlert = () => {
+    if (!beginAction("sensor")) return;
+
+    navigateTo("/reporter/emergency-alert" as Href);
   };
 
   if (loading || activeLoading) {
@@ -82,7 +149,9 @@ export default function ReporterTracking() {
         subtitle="Mengambil laporan aktif dari backend."
       >
         <Card>
-          <Text style={styles.mockNote}>Sebentar, data laporan sedang dimuat.</Text>
+          <Text style={[styles.mockNote, { color: palette.muted }]}>
+            Sebentar, data laporan sedang dimuat.
+          </Text>
         </Card>
       </ScreenShell>
     );
@@ -96,8 +165,16 @@ export default function ReporterTracking() {
         title="Belum Ada Laporan Aktif"
         subtitle="Buat laporan darurat dari halaman home."
       >
-        <Card style={styles.sensorCard}>
-          <Text style={styles.sectionCaption}>
+        <Card
+          style={[
+            styles.sensorCard,
+            {
+              backgroundColor: mode === "dark" ? palette.cardSoft : "#FFF7F7",
+              borderColor: "#FECACA",
+            },
+          ]}
+        >
+          <Text style={[styles.sectionCaption, { color: palette.muted }]}>
             {error ?? "Tidak ada laporan aktif yang perlu dilacak."}
           </Text>
           <PrimaryAction
@@ -121,6 +198,7 @@ export default function ReporterTracking() {
         <IconButton
           icon="crosshairs-gps"
           tone="secondary"
+          disabled={!!busyAction}
           onPress={refreshLocation}
         />
       }
@@ -130,14 +208,20 @@ export default function ReporterTracking() {
           height={260}
           latitude={active.latitude}
           longitude={active.longitude}
+          operatorLatitude={latestActiveDispatch?.current_latitude}
+          operatorLongitude={latestActiveDispatch?.current_longitude}
         />
         <View style={styles.trackingBody}>
           <View style={styles.statusRow}>
             <View style={styles.statusText}>
-              <Text style={styles.sectionTitle}>Bantuan sedang menuju</Text>
-              <Text style={styles.sectionCaption}>
+              <Text style={[styles.sectionTitle, { color: palette.text }]}>
+                Bantuan sedang menuju
+              </Text>
+              <Text style={[styles.sectionCaption, { color: palette.muted }]}>
                 {active.assigned_operator?.full_name
-                  ? `Terhubung dengan ${active.assigned_operator.full_name}.`
+                  ? latestActiveDispatch
+                    ? `${unitTypeLabel(latestActiveDispatch.unit_type)} ${unitDispatchStatusLabel(latestActiveDispatch.status).toLowerCase()}.`
+                    : `Terhubung dengan ${active.assigned_operator.full_name}.`
                   : "Sistem sedang mencari operator yang tersedia."}
               </Text>
             </View>
@@ -152,6 +236,18 @@ export default function ReporterTracking() {
               { label: "Prioritas", value: active.priority },
               { label: "Operator", value: active.assigned_operator?.full_name ?? "Mencari" },
               {
+                label: "Unit",
+                value: latestActiveDispatch
+                  ? `${unitTypeLabel(latestActiveDispatch.unit_type)} - ${unitDispatchStatusLabel(latestActiveDispatch.status)}`
+                  : "Belum dikirim",
+              },
+              {
+                label: "Lokasi Unit",
+                value: latestActiveDispatch?.last_location_at
+                  ? formatRelativeTime(latestActiveDispatch.last_location_at)
+                  : "Belum dikirim",
+              },
+              {
                 label: "Lokasi",
                 value:
                   typeof active.latitude === "number" &&
@@ -162,7 +258,7 @@ export default function ReporterTracking() {
             ]}
           />
 
-          <Text style={styles.mockNote}>
+          <Text style={[styles.mockNote, { color: palette.muted }]}>
             {active.description ?? active.title ?? "Tetap berada di lokasi aman dan aktifkan notifikasi."}
           </Text>
         </View>
@@ -173,37 +269,51 @@ export default function ReporterTracking() {
             icon="phone"
             tone="secondary"
             style={styles.actionFlex}
+            disabled={!!busyAction}
             onPress={openCall}
           />
           <PrimaryAction
-            label="Pesan"
+            label={busyAction === "chat" ? "Membuka..." : "Pesan"}
             icon="message-outline"
             tone="soft"
             style={styles.actionFlex}
+            disabled={!!busyAction}
             onPress={openChat}
           />
           <PrimaryAction
-            label="Selesai"
+            label={busyAction === "finish" ? "Menyimpan..." : "Selesai"}
             icon="check-circle-outline"
             tone="danger"
             style={styles.actionFlex}
+            disabled={!!busyAction}
             onPress={handleFinish}
           />
         </View>
       </Card>
 
-      <Card style={styles.sensorCard}>
+      <Card
+        style={[
+          styles.sensorCard,
+          {
+            backgroundColor: mode === "dark" ? palette.cardSoft : "#FFF7F7",
+            borderColor: "#FECACA",
+          },
+        ]}
+      >
         <View style={styles.statusRow}>
           <View style={styles.statusText}>
-            <Text style={styles.sectionTitle}>Deteksi guncangan</Text>
-            <Text style={styles.sectionCaption}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>
+              Deteksi guncangan
+            </Text>
+            <Text style={[styles.sectionCaption, { color: palette.muted }]}>
               Jika sensor membaca benturan keras, sistem akan menunggu konfirmasi 10 detik.
             </Text>
           </View>
           <PrimaryAction
-            label="Coba"
+            label={busyAction === "sensor" ? "Membuka..." : "Coba"}
             tone="danger"
-            onPress={() => navigateTo("/reporter/emergency-alert" as Href)}
+            disabled={!!busyAction}
+            onPress={openSensorAlert}
           />
         </View>
       </Card>

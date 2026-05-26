@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, radius, shadow, spacing, typography } from "@/theme";
 import { EmergencyWithReporter } from "@/types";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import {
   emergencyStatusLabel,
   emergencyTypeLabel,
@@ -43,6 +44,7 @@ const statusText: Record<string, string> = {
 };
 
 export const EmergencyCard: React.FC<Props> = ({ emergency, onPress }) => {
+  const { palette } = useAppTheme();
   const isUrgent = emergency.status === "pending";
   const locationText =
     emergency.address ??
@@ -56,6 +58,7 @@ export const EmergencyCard: React.FC<Props> = ({ emergency, onPress }) => {
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        { backgroundColor: palette.card, borderColor: palette.border },
         shadow.sm,
         isUrgent && styles.urgent,
         pressed && { transform: [{ scale: 0.985 }] },
@@ -68,7 +71,7 @@ export const EmergencyCard: React.FC<Props> = ({ emergency, onPress }) => {
             { backgroundColor: typeColor[emergency.type] ?? colors.danger },
           ]}
         />
-        <Text style={[typography.bodyStrong, { color: colors.text }]}>
+        <Text style={[typography.bodyStrong, { color: palette.text }]}>
           {emergencyTypeLabel(emergency.type)}
         </Text>
         <View style={{ flex: 1 }} />
@@ -89,16 +92,19 @@ export const EmergencyCard: React.FC<Props> = ({ emergency, onPress }) => {
         </View>
       </View>
 
-      <Text style={[typography.h3, styles.reporter]} numberOfLines={1}>
+      <Text
+        style={[typography.h3, styles.reporter, { color: palette.text }]}
+        numberOfLines={1}
+      >
         {emergency.reporter?.full_name ?? "Pelapor"}
       </Text>
 
-      <Text style={styles.address} numberOfLines={2}>
+      <Text style={[styles.address, { color: palette.muted }]} numberOfLines={2}>
         Lokasi: {locationText}
       </Text>
 
       <View style={styles.footer}>
-        <Text style={styles.time}>
+        <Text style={[styles.time, { color: palette.subtle }]}>
           {formatRelativeTime(emergency.created_at)}
         </Text>
         {sensorDetected && (
@@ -118,11 +124,9 @@ export const EmergencyCard: React.FC<Props> = ({ emergency, onPress }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: spacing.md,
   },
   urgent: { borderColor: colors.primary, borderWidth: 1.5 },
@@ -133,10 +137,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: radius.full,
   },
-  reporter: { marginTop: spacing.sm, color: colors.text },
+  reporter: { marginTop: spacing.sm },
   address: {
     fontSize: 13,
-    color: colors.textMuted,
     marginTop: 4,
     lineHeight: 18,
   },
@@ -146,7 +149,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     gap: spacing.sm,
   },
-  time: { fontSize: 12, color: colors.textSubtle, flex: 1 },
+  time: { fontSize: 12, flex: 1 },
   tag: {
     backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.sm,

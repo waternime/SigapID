@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { useReporterReports } from "@/hooks/useEmergencyReports";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { emergencyStatusLabel, emergencyTypeLabel, formatRelativeTime } from "@/utils/format";
 import { colors, spacing, typography } from "@/theme";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/components/app/MockAppUI";
 
 export default function ReporterHistory() {
+  const { palette } = useAppTheme();
   const { history, loading, error } = useReporterReports();
 
   return (
@@ -18,21 +20,27 @@ export default function ReporterHistory() {
       activeTab="history"
       title="Laporan Selesai"
       subtitle="15 riwayat terbaru yang sudah ditangani."
-      action={<IconButton icon="bell-outline" tone="secondary" />}
+      action={<IconButton icon="clock-outline" tone="secondary" disabled />}
     >
       <View style={styles.list}>
         {loading ? (
           <Card>
-            <Text style={styles.itemTime}>Memuat histori...</Text>
+            <Text style={[styles.itemTime, { color: palette.muted }]}>
+              Memuat histori...
+            </Text>
           </Card>
         ) : error ? (
           <Card>
-            <Text style={styles.itemTime}>Histori gagal dimuat: {error}</Text>
+            <Text style={[styles.itemTime, { color: palette.muted }]}>
+              Histori gagal dimuat: {error}
+            </Text>
           </Card>
         ) : history.length === 0 ? (
           <Card>
-            <Text style={styles.itemTitle}>Belum ada histori</Text>
-            <Text style={styles.itemTime}>
+            <Text style={[styles.itemTitle, { color: palette.text }]}>
+              Belum ada histori
+            </Text>
+            <Text style={[styles.itemTime, { color: palette.muted }]}>
               Laporan yang diselesaikan akan masuk ke sini.
             </Text>
           </Card>
@@ -40,10 +48,10 @@ export default function ReporterHistory() {
           history.map((item) => (
             <Card key={item.id} style={styles.itemCard}>
               <View style={styles.itemText}>
-                <Text style={styles.itemTitle}>
+                <Text style={[styles.itemTitle, { color: palette.text }]}>
                   {item.title ?? emergencyTypeLabel(item.type)}
                 </Text>
-                <Text style={styles.itemTime}>
+                <Text style={[styles.itemTime, { color: palette.muted }]}>
                   Laporan {formatRelativeTime(item.created_at)}
                 </Text>
               </View>

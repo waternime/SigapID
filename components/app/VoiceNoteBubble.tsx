@@ -6,6 +6,7 @@ import {
   useAudioPlayerStatus,
 } from "expo-audio";
 import { formatVoiceDuration } from "@/hooks/useVoiceNoteRecorder";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { colors, radius, shadow, spacing, typography } from "@/theme";
 
 export function VoiceNoteBubble({
@@ -17,6 +18,7 @@ export function VoiceNoteBubble({
   mediaUrl?: string | null;
   durationSeconds?: number | null;
 }) {
+  const { palette } = useAppTheme();
   const player = useAudioPlayer(mediaUrl ? { uri: mediaUrl } : null, {
     updateInterval: 250,
   });
@@ -64,7 +66,17 @@ export function VoiceNoteBubble({
       onPress={handlePlay}
       style={({ pressed }) => [
         styles.voiceBubble,
-        mine && styles.voiceBubbleMine,
+        {
+          backgroundColor: palette.card,
+          borderColor: palette.border,
+        },
+        mine && [
+          styles.voiceBubbleMine,
+          {
+            backgroundColor: palette.secondarySoft,
+            borderColor: palette.borderStrong,
+          },
+        ],
         pressed && styles.pressed,
       ]}
     >
@@ -77,10 +89,17 @@ export function VoiceNoteBubble({
       </View>
 
       <View style={styles.voiceContent}>
-        <View style={styles.waveTrack}>
-          <View style={[styles.waveProgress, { width: `${progress}%` }]} />
+        <View style={[styles.waveTrack, { backgroundColor: palette.surfaceMuted }]}>
+          <View
+            style={[
+              styles.waveProgress,
+              { width: `${progress}%`, backgroundColor: palette.secondary },
+            ]}
+          />
         </View>
-        <Text style={styles.voiceTime}>{formatVoiceDuration(shownDuration)}</Text>
+        <Text style={[styles.voiceTime, { color: palette.muted }]}>
+          {formatVoiceDuration(shownDuration)}
+        </Text>
       </View>
     </Pressable>
   );
@@ -98,17 +117,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 8,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     ...shadow.sm,
   },
   voiceBubbleMine: {
     alignSelf: "flex-end",
     borderTopLeftRadius: 18,
     borderTopRightRadius: 8,
-    backgroundColor: "#E8F4FF",
-    borderColor: "#BFDBFE",
   },
   pressed: {
     opacity: 0.82,
@@ -133,15 +148,12 @@ const styles = StyleSheet.create({
     height: 8,
     overflow: "hidden",
     borderRadius: radius.full,
-    backgroundColor: "#DCE8F7",
   },
   waveProgress: {
     height: "100%",
     borderRadius: radius.full,
-    backgroundColor: colors.secondary,
   },
   voiceTime: {
     ...typography.micro,
-    color: colors.textMuted,
   },
 });

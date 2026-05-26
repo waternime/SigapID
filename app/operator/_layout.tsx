@@ -9,6 +9,7 @@ export default function OperatorLayout() {
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="report-detail" />
       <Stack.Screen name="chat" />
+      <Stack.Screen name="call" />
       <Stack.Screen name="history" />
       <Stack.Screen name="profile" />
     </Stack>

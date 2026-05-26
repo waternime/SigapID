@@ -3,6 +3,7 @@ import { Alert, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFamilyMembers } from "@/hooks/useFamilyMembers";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { FamilyMemberWithProfile } from "@/types";
 import { colors, radius, spacing, typography } from "@/theme";
 import {
@@ -16,6 +17,7 @@ import {
 
 export default function ReporterFamilyDetail() {
   const { profile } = useAuth();
+  const { palette } = useAppTheme();
   const { members, loading, error, updateRequestStatus } = useFamilyMembers();
 
   const handleRequest = async (
@@ -54,12 +56,16 @@ export default function ReporterFamilyDetail() {
     >
       {loading ? (
         <Card style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Memuat keluarga...</Text>
+          <Text style={[styles.emptyTitle, { color: palette.text }]}>
+            Memuat keluarga...
+          </Text>
         </Card>
       ) : error ? (
         <Card style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Data belum bisa dimuat</Text>
-          <Text style={styles.emptyText}>{error}</Text>
+          <Text style={[styles.emptyTitle, { color: palette.text }]}>
+            Data belum bisa dimuat
+          </Text>
+          <Text style={[styles.emptyText, { color: palette.muted }]}>{error}</Text>
         </Card>
       ) : members.length === 0 ? (
         <Card style={styles.emptyCard}>
@@ -68,8 +74,10 @@ export default function ReporterFamilyDetail() {
             size={36}
             color={colors.primary}
           />
-          <Text style={styles.emptyTitle}>Belum ada anggota keluarga</Text>
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyTitle, { color: palette.text }]}>
+            Belum ada anggota keluarga
+          </Text>
+          <Text style={[styles.emptyText, { color: palette.muted }]}>
             Tambahkan keluarga dari ID akun. Setelah mereka menerima permintaan,
             statusnya akan muncul di sini.
           </Text>
@@ -86,7 +94,12 @@ export default function ReporterFamilyDetail() {
             return (
               <Card key={member.id} style={styles.memberCard}>
               <View style={styles.memberHeader}>
-                <View style={styles.memberAvatar}>
+                <View
+                  style={[
+                    styles.memberAvatar,
+                    { backgroundColor: palette.secondarySoft },
+                  ]}
+                >
                   <MaterialCommunityIcons
                     name={
                       isIncomingRequest
@@ -98,10 +111,10 @@ export default function ReporterFamilyDetail() {
                   />
                 </View>
                 <View style={styles.memberText}>
-                  <Text style={styles.memberName}>
+                  <Text style={[styles.memberName, { color: palette.text }]}>
                     {displayProfile?.full_name ?? "Anggota keluarga"}
                   </Text>
-                  <Text style={styles.memberNote}>
+                  <Text style={[styles.memberNote, { color: palette.muted }]}>
                     ID: {displayProfile?.user_code ?? displayProfile?.id ?? "-"}
                   </Text>
                 </View>
@@ -127,8 +140,16 @@ export default function ReporterFamilyDetail() {
                         ? "Sudah terhubung"
                         : member.status,
                 ].map((metric) => (
-                  <View key={metric} style={styles.metricChip}>
-                    <Text style={styles.metricText}>{metric}</Text>
+                  <View
+                    key={metric}
+                    style={[
+                      styles.metricChip,
+                      { backgroundColor: palette.cardSoft, borderColor: palette.border },
+                    ]}
+                  >
+                    <Text style={[styles.metricText, { color: palette.text }]}>
+                      {metric}
+                    </Text>
                   </View>
                 ))}
               </View>

@@ -1,10 +1,16 @@
 import { Href, router } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "@/hooks/useAuth";
-import { useFamilyMembers } from "@/hooks/useFamilyMembers";
+import {
+  useFamilyActiveReports,
+  useFamilyMembers,
+} from "@/hooks/useFamilyMembers";
 import { useEmergencyActions } from "@/hooks/useEmergencyReports";
+import { useAppNotification } from "@/components/app/AppNotification";
+import { useAppTheme } from "@/hooks/useAppTheme";
+import { emergencyTypeLabel } from "@/utils/format";
 import { EmergencyType, FamilyMemberWithProfile } from "@/types";
 import { colors, radius, spacing, typography } from "@/theme";
 import {
@@ -54,20 +60,43 @@ const emergencyTypes = [
 
 export default function ReporterDashboard() {
   const { profile } = useAuth();
+  const { palette, mode } = useAppTheme();
+  const { showNotification } = useAppNotification();
   const { members, loading: familyLoading, error: familyError } = useFamilyMembers();
+  const {
+    reports: familyActiveReports,
+    reportsByProfileId,
+    loading: familyReportsLoading,
+    error: familyReportsError,
+  } = useFamilyActiveReports(members, profile?.id);
   const { createReport } = useEmergencyActions();
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const reportSubmittingRef = useRef(false);
   const name = profile?.full_name ?? "User";
   const visibleMembers = members.slice(0, 2);
   const pendingIncomingCount = members.filter(
     (member) => member.member_id === profile?.id && member.status === "pending",
   ).length;
+  const familyStatusCaption = familyLoading
+    ? "Memuat anggota keluarga..."
+    : familyReportsLoading
+      ? "Mengecek status darurat keluarga..."
+      : familyActiveReports.length > 0
+        ? `${familyActiveReports.length} keluarga darurat`
+        : pendingIncomingCount > 0
+          ? `${pendingIncomingCount} permintaan masuk`
+          : `${members.length} anggota dipantau`;
 
   const handleCreateReport = async (
     type: EmergencyType,
     title = "Laporan Darurat",
     description?: string,
   ) => {
+    if (reportSubmittingRef.current) return;
+
+    reportSubmittingRef.current = true;
+    setReportSubmitting(true);
     setCategoryPickerOpen(false);
 
     try {
@@ -78,11 +107,19 @@ export default function ReporterDashboard() {
         priority: type === "sos" ? "critical" : "high",
       });
 
+      showNotification({
+        title: "Laporan terkirim",
+        message: `${emergencyTypeLabel(type)} sudah masuk ke operator terdekat.`,
+        tone: "success",
+      });
+
       router.push({
         pathname: "/reporter/tracking",
         params: { reportId: report.id },
       });
     } catch (error) {
+      reportSubmittingRef.current = false;
+      setReportSubmitting(false);
       Alert.alert(
         "Gagal membuat laporan",
         error instanceof Error ? error.message : "Terjadi kesalahan.",
@@ -100,72 +137,130 @@ export default function ReporterDashboard() {
     >
       <Card style={styles.familyCard}>
         <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Monitoring Keluarga</Text>
-            <Text style={styles.sectionCaption}>
-              {familyLoading
-                ? "Memuat anggota keluarga..."
-                : pendingIncomingCount > 0
-                  ? `${pendingIncomingCount} permintaan masuk`
-                  : `${members.length} anggota dipantau`}
+          <View style={styles.sectionHeaderText}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>
+              Monitoring Keluarga
+            </Text>
+            <Text style={[styles.sectionCaption, { color: palette.muted }]}>
+              {familyStatusCaption}
             </Text>
           </View>
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => navigateTo("/reporter/family-detail" as Href)}
-              style={styles.smallButton}
+              style={[
+                styles.smallButton,
+                { backgroundColor: palette.cardSoft, borderColor: palette.border },
+              ]}
             >
-              <Text style={styles.smallButtonText}>Detail</Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.76}
+                style={[styles.smallButtonText, { color: palette.secondary }]}
+              >
+                Detail
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => navigateTo("/reporter/add-family" as Href)}
-              style={styles.smallButton}
+              style={[
+                styles.smallButton,
+                { backgroundColor: palette.cardSoft, borderColor: palette.border },
+              ]}
             >
-              <Text style={styles.smallButtonText}>Tambah</Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.76}
+                style={[styles.smallButtonText, { color: palette.secondary }]}
+              >
+                Tambah
+              </Text>
             </Pressable>
           </View>
         </View>
 
         {familyError ? (
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyText, { color: palette.muted }]}>
             Data keluarga belum bisa dimuat: {familyError}
+          </Text>
+        ) : familyReportsError ? (
+          <Text style={[styles.emptyText, { color: palette.muted }]}>
+            Status darurat keluarga belum bisa dimuat: {familyReportsError}
           </Text>
         ) : visibleMembers.length > 0 ? (
           <View style={styles.familyGrid}>
-            {visibleMembers.map((member) => (
-              <View key={member.id} style={styles.familyStatus}>
-                <Text style={styles.familyName}>
-                  {getDisplayProfile(member, profile?.id)?.full_name ??
-                    "Anggota keluarga"}
-                </Text>
-                <StatusPill
-                  label={
-                    member.member_id === profile?.id && member.status === "pending"
-                      ? "Perlu respon"
-                      : member.status === "accepted"
-                        ? "Aman"
-                        : "Menunggu"
-                  }
-                  tone={
-                    member.status === "accepted"
-                      ? "success"
-                      : member.member_id === profile?.id
-                        ? "danger"
-                        : "warning"
-                  }
-                />
-              </View>
-            ))}
+            {visibleMembers.map((member) => {
+              const displayProfile = getDisplayProfile(member, profile?.id);
+              const activeFamilyReport = displayProfile?.id
+                ? reportsByProfileId.get(displayProfile.id)
+                : null;
+              const needsResponse =
+                member.member_id === profile?.id && member.status === "pending";
+              const statusLabel = activeFamilyReport
+                ? `${emergencyTypeLabel(activeFamilyReport.type)} darurat`
+                : needsResponse
+                  ? "Perlu respon"
+                  : member.status === "accepted"
+                    ? "Aman"
+                    : "Menunggu";
+              const statusTone = activeFamilyReport
+                ? "danger"
+                : member.status === "accepted"
+                  ? "success"
+                  : needsResponse
+                    ? "danger"
+                    : "warning";
+
+              return (
+                <Pressable
+                  key={member.id}
+                  onPress={() => {
+                    if (!activeFamilyReport?.id) return;
+
+                    router.push({
+                      pathname: "/reporter/tracking",
+                      params: { reportId: activeFamilyReport.id },
+                    });
+                  }}
+                  style={({ pressed }) => [
+                    styles.familyStatus,
+                    {
+                      backgroundColor: activeFamilyReport
+                        ? mode === "dark"
+                          ? palette.cardSoft
+                          : "#FFF7F7"
+                        : palette.cardSoft,
+                      borderColor: activeFamilyReport ? "#FCA5A5" : palette.border,
+                    },
+                    pressed && activeFamilyReport && styles.pressed,
+                  ]}
+                >
+                  <Text style={[styles.familyName, { color: palette.text }]}>
+                    {displayProfile?.full_name ?? "Anggota keluarga"}
+                  </Text>
+                  <StatusPill label={statusLabel} tone={statusTone} />
+                </Pressable>
+              );
+            })}
           </View>
         ) : (
-          <View style={styles.emptyFamily}>
+          <View
+            style={[
+              styles.emptyFamily,
+              { backgroundColor: palette.cardSoft, borderColor: palette.border },
+            ]}
+          >
             <MaterialCommunityIcons
               name="account-plus-outline"
               size={26}
               color={colors.primary}
             />
-            <Text style={styles.emptyTitle}>Belum ada keluarga</Text>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyTitle, { color: palette.text }]}>
+              Belum ada keluarga
+            </Text>
+            <Text style={[styles.emptyText, { color: palette.muted }]}>
               Tambahkan keluarga pakai ID akun supaya status mereka muncul di
               sini.
             </Text>
@@ -175,16 +270,25 @@ export default function ReporterDashboard() {
 
       <Card style={styles.reportCard}>
         <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Tombol Darurat</Text>
-            <Text style={styles.sectionCaption}>
+          <View style={styles.sectionHeaderText}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>
+              Tombol Darurat
+            </Text>
+            <Text style={[styles.sectionCaption, { color: palette.muted }]}>
               Pilih jenis insiden untuk respons lebih cepat.
             </Text>
           </View>
           <IconButton
             icon="bell-alert-outline"
             tone="danger"
-            onPress={() => navigateTo("/reporter/emergency-alert" as Href)}
+            disabled={reportSubmitting}
+            onPress={() =>
+              handleCreateReport(
+                "sos",
+                "SOS - Laporan Darurat",
+                "Pelapor tidak sempat memilih kategori detail.",
+              )
+            }
           />
         </View>
 
@@ -192,6 +296,7 @@ export default function ReporterDashboard() {
           label="Lapor Keadaan Darurat"
           icon="alert-circle-outline"
           tone="danger"
+          disabled={reportSubmitting}
           onPress={() => setCategoryPickerOpen(true)}
         />
 
@@ -199,6 +304,7 @@ export default function ReporterDashboard() {
           {emergencyTypes.map((item) => (
             <Pressable
               key={item.title}
+              disabled={reportSubmitting}
               onPress={() =>
                 handleCreateReport(
                   item.type,
@@ -208,8 +314,12 @@ export default function ReporterDashboard() {
               }
               style={({ pressed }) => [
                 styles.emergencyTile,
-                { backgroundColor: item.background, borderColor: `${item.color}35` },
-                pressed && styles.pressed,
+                {
+                  backgroundColor: mode === "dark" ? palette.cardSoft : item.background,
+                  borderColor: `${item.color}55`,
+                },
+                pressed && !reportSubmitting && styles.pressed,
+                reportSubmitting && styles.disabledTile,
               ]}
             >
               <MaterialCommunityIcons
@@ -220,7 +330,9 @@ export default function ReporterDashboard() {
               <Text style={[styles.emergencyTitle, { color: item.color }]}>
                 {item.title}
               </Text>
-              <Text style={styles.emergencyText}>{item.description}</Text>
+              <Text style={[styles.emergencyText, { color: palette.muted }]}>
+                {item.description}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -233,9 +345,16 @@ export default function ReporterDashboard() {
         onRequestClose={() => setCategoryPickerOpen(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.categorySheet}>
-            <Text style={styles.modalTitle}>Pilih kategori laporan</Text>
-            <Text style={styles.modalCaption}>
+          <View
+            style={[
+              styles.categorySheet,
+              { backgroundColor: palette.card, borderColor: palette.border },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: palette.text }]}>
+              Pilih kategori laporan
+            </Text>
+            <Text style={[styles.modalCaption, { color: palette.muted }]}>
               Operator akan dipilih otomatis sesuai laporan yang dikirim.
             </Text>
 
@@ -243,6 +362,7 @@ export default function ReporterDashboard() {
               {emergencyTypes.map((item) => (
                 <Pressable
                   key={item.title}
+                  disabled={reportSubmitting}
                   onPress={() =>
                     handleCreateReport(
                       item.type,
@@ -252,8 +372,12 @@ export default function ReporterDashboard() {
                   }
                   style={({ pressed }) => [
                     styles.categoryChoice,
-                    { borderColor: `${item.color}35` },
-                    pressed && styles.pressed,
+                    {
+                      backgroundColor: palette.cardSoft,
+                      borderColor: `${item.color}55`,
+                    },
+                    pressed && !reportSubmitting && styles.pressed,
+                    reportSubmitting && styles.disabledTile,
                   ]}
                 >
                   <MaterialCommunityIcons
@@ -262,13 +386,17 @@ export default function ReporterDashboard() {
                     color={item.color}
                   />
                   <View style={styles.categoryText}>
-                    <Text style={styles.categoryTitle}>{item.title}</Text>
-                    <Text style={styles.categoryCaption}>{item.description}</Text>
+                    <Text style={[styles.categoryTitle, { color: palette.text }]}>
+                      {item.title}
+                    </Text>
+                    <Text style={[styles.categoryCaption, { color: palette.muted }]}>
+                      {item.description}
+                    </Text>
                   </View>
                 </Pressable>
               ))}
-
               <Pressable
+                disabled={reportSubmitting}
                 onPress={() =>
                   handleCreateReport(
                     "sos",
@@ -278,27 +406,35 @@ export default function ReporterDashboard() {
                 }
                 style={({ pressed }) => [
                   styles.categoryChoice,
-                  styles.sosChoice,
-                  pressed && styles.pressed,
+                  {
+                    backgroundColor: mode === "dark" ? palette.cardSoft : "#FFF7F7",
+                    borderColor: "#FECACA",
+                  },
+                  pressed && !reportSubmitting && styles.pressed,
+                  reportSubmitting && styles.disabledTile,
                 ]}
               >
                 <MaterialCommunityIcons
-                  name="alert-circle-outline"
+                  name="bell-alert-outline"
                   size={22}
                   color={colors.danger}
                 />
                 <View style={styles.categoryText}>
-                  <Text style={styles.categoryTitle}>SOS</Text>
-                  <Text style={styles.categoryCaption}>
-                    Untuk kondisi darurat yang belum bisa dijelaskan.
+                  <Text style={[styles.categoryTitle, { color: palette.text }]}>
+                    SOS
+                  </Text>
+                  <Text style={[styles.categoryCaption, { color: palette.muted }]}>
+                    Darurat cepat saat kategori belum sempat dijelaskan.
                   </Text>
                 </View>
               </Pressable>
+
             </View>
 
             <PrimaryAction
               label="Batal"
               tone="soft"
+              disabled={reportSubmitting}
               onPress={() => setCategoryPickerOpen(false)}
             />
           </View>
@@ -322,8 +458,12 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  sectionHeaderText: {
+    flex: 1,
+    minWidth: 0,
   },
   sectionTitle: {
     ...typography.bodyStrong,
@@ -336,12 +476,14 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: "row",
-    gap: spacing.sm,
-    marginLeft: "auto",
+    flexShrink: 0,
+    gap: spacing.xs,
+    marginLeft: spacing.xs,
   },
   smallButton: {
     minHeight: 34,
-    paddingHorizontal: spacing.md,
+    minWidth: 64,
+    paddingHorizontal: spacing.sm,
     borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
@@ -420,6 +562,9 @@ const styles = StyleSheet.create({
     opacity: 0.82,
     transform: [{ scale: 0.98 }],
   },
+  disabledTile: {
+    opacity: 0.55,
+  },
   modalBackdrop: {
     flex: 1,
     justifyContent: "flex-end",
@@ -454,10 +599,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: "#F8FEFF",
     padding: spacing.md,
-  },
-  sosChoice: {
-    borderColor: "#FECACA",
-    backgroundColor: "#FFF7F7",
   },
   categoryText: {
     flex: 1,

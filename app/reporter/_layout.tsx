@@ -11,6 +11,7 @@ export default function ReporterLayout() {
       <Stack.Screen name="add-family" />
       <Stack.Screen name="tracking" />
       <Stack.Screen name="chat" />
+      <Stack.Screen name="call" />
       <Stack.Screen name="emergency-alert" />
       <Stack.Screen name="history" />
       <Stack.Screen name="profile" />

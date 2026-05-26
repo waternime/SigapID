@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,6 +12,7 @@ import { Href, router } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppNotification } from "@/components/app/AppNotification";
 import { colors, spacing, typography } from "@/theme";
 import { UserRole } from "@/types";
 
@@ -23,6 +23,7 @@ const dashboardPathByRole: Record<UserRole, Href> = {
 
 export default function LoginScreen() {
   const { signIn, loading } = useAuth();
+  const { showNotification } = useAppNotification();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -38,10 +39,11 @@ export default function LoginScreen() {
       const profile = await signIn(email.trim().toLowerCase(), password);
       router.replace(dashboardPathByRole[profile.role]);
     } catch (e) {
-      Alert.alert(
-        "Login gagal",
-        e instanceof Error ? e.message : "Terjadi kesalahan",
-      );
+      showNotification({
+        title: "Login gagal",
+        message: e instanceof Error ? e.message : "Terjadi kesalahan",
+        tone: "danger",
+      });
     }
   };
 

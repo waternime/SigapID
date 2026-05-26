@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors, radius, shadow, spacing, typography } from "@/theme";
 import { EmergencyType } from "@/types";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 type ServiceType = Exclude<EmergencyType, "sos">;
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -66,6 +67,7 @@ export const ServiceButton: React.FC<ServiceButtonProps> = ({
   onPress,
   disabled,
 }) => {
+  const { palette } = useAppTheme();
   const c = config[type];
   return (
     <Pressable
@@ -73,6 +75,7 @@ export const ServiceButton: React.FC<ServiceButtonProps> = ({
       disabled={disabled}
       style={({ pressed }) => [
         styles.btn,
+        { backgroundColor: palette.card, borderColor: palette.border },
         shadow.sm,
         pressed && !disabled && styles.pressed,
         disabled && { opacity: 0.5 },
@@ -81,10 +84,12 @@ export const ServiceButton: React.FC<ServiceButtonProps> = ({
       <View style={[styles.iconBubble, { backgroundColor: `${c.color}1A` }]}>
         <MaterialCommunityIcons name={c.icon} size={28} color={c.color} />
       </View>
-      <Text style={[typography.bodyStrong, { color: colors.text }]}>
+      <Text style={[typography.bodyStrong, { color: palette.text }]}>
         {c.label}
       </Text>
-      <Text style={[typography.caption, styles.desc]}>{c.description}</Text>
+      <Text style={[typography.caption, styles.desc, { color: palette.subtle }]}>
+        {c.description}
+      </Text>
     </Pressable>
   );
 };
@@ -92,13 +97,11 @@ export const ServiceButton: React.FC<ServiceButtonProps> = ({
 const styles = StyleSheet.create({
   btn: {
     flex: 1,
-    backgroundColor: colors.surface,
     borderRadius: radius.xl,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.md,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.border,
   },
   pressed: { transform: [{ scale: 0.97 }] },
   iconBubble: {
@@ -110,7 +113,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   desc: {
-    color: colors.textSubtle,
     marginTop: 2,
     textAlign: "center",
   },

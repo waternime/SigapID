@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { colors, radius, spacing, typography } from "@/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -22,10 +23,15 @@ export const Input: React.FC<InputProps> = ({
   ...rest
 }) => {
   const [focused, setFocused] = useState(false);
+  const { palette } = useAppTheme();
 
   return (
     <View style={styles.wrap}>
-      {label && <Text style={[typography.caption, styles.label]}>{label}</Text>}
+      {label && (
+        <Text style={[typography.caption, styles.label, { color: palette.muted }]}>
+          {label}
+        </Text>
+      )}
       <TextInput
         {...rest}
         onFocus={(e) => {
@@ -36,9 +42,14 @@ export const Input: React.FC<InputProps> = ({
           setFocused(false);
           onBlur?.(e);
         }}
-        placeholderTextColor={colors.textSubtle}
+        placeholderTextColor={palette.subtle}
         style={[
           styles.input,
+          {
+            backgroundColor: palette.input,
+            borderColor: palette.border,
+            color: palette.text,
+          },
           focused && styles.inputFocused,
           !!error && styles.inputError,
           style,
@@ -52,19 +63,15 @@ export const Input: React.FC<InputProps> = ({
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.lg },
   label: {
-    color: colors.textMuted,
     marginBottom: spacing.xs,
     fontWeight: "600",
   },
   input: {
     borderWidth: 1.5,
-    borderColor: colors.border,
     borderRadius: radius.lg,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md + 2,
     fontSize: 15,
-    color: colors.text,
-    backgroundColor: colors.surface,
   },
   inputFocused: { borderColor: colors.secondary },
   inputError: { borderColor: colors.danger },

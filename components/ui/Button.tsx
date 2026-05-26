@@ -7,6 +7,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { colors, radius, spacing, typography } from "@/theme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
@@ -33,6 +34,17 @@ export const Button: React.FC<ButtonProps> = ({
   style,
 }) => {
   const isDisabled = disabled || loading;
+  const { palette } = useAppTheme();
+  const resolvedTextColor =
+    variant === "ghost" ? palette.text : colors.textInverse;
+  const resolvedVariantStyle =
+    variant === "ghost"
+      ? {
+          backgroundColor: "transparent",
+          borderWidth: 1,
+          borderColor: palette.border,
+        }
+      : variantStyles[variant];
 
   return (
     <Pressable
@@ -41,7 +53,7 @@ export const Button: React.FC<ButtonProps> = ({
       style={({ pressed }) => [
         styles.base,
         sizeStyles[size],
-        variantStyles[variant],
+        resolvedVariantStyle,
         fullWidth && styles.fullWidth,
         pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
@@ -49,19 +61,14 @@ export const Button: React.FC<ButtonProps> = ({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={textColor(variant)} />
+        <ActivityIndicator color={resolvedTextColor} />
       ) : (
-        <Text style={[typography.button, { color: textColor(variant) }]}>
+        <Text style={[typography.button, { color: resolvedTextColor }]}>
           {label}
         </Text>
       )}
     </Pressable>
   );
-};
-
-const textColor = (v: Variant): string => {
-  if (v === "ghost") return colors.text;
-  return colors.textInverse;
 };
 
 const styles = StyleSheet.create({
@@ -84,10 +91,6 @@ const sizeStyles: Record<Size, ViewStyle> = {
 const variantStyles: Record<Variant, ViewStyle> = {
   primary: { backgroundColor: colors.primary },
   secondary: { backgroundColor: colors.secondary },
-  ghost: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  ghost: {},
   danger: { backgroundColor: colors.danger },
 };

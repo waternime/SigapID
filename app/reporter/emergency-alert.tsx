@@ -3,22 +3,29 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEmergencyActions } from "@/hooks/useEmergencyReports";
+import { snoozeShakeEmergencyAlert } from "@/hooks/useShakeEmergencyAlert";
+import { useAppNotification } from "@/components/app/AppNotification";
 import { colors, shadow, spacing, typography } from "@/theme";
 import {
   IconButton,
   PrimaryAction,
   ScreenShell,
-  navigateTo,
 } from "@/components/app/MockAppUI";
 
 export default function ReporterEmergencyAlert() {
   const { createReport } = useEmergencyActions();
+  const { showNotification } = useAppNotification();
   const [countdown, setCountdown] = useState(10);
+  const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
+  const cancelledRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSensorReport = useCallback(async () => {
+    if (cancelledRef.current) return;
     if (sendingRef.current) return;
     sendingRef.current = true;
+    setSending(true);
 
     try {
       const report = await createReport({
@@ -27,6 +34,12 @@ export default function ReporterEmergencyAlert() {
         description: "Sensor mendeteksi guncangan keras dan pelapor meminta bantuan.",
         priority: "critical",
         sensorDetected: true,
+      });
+
+      showNotification({
+        title: "Laporan medis terkirim",
+        message: "Operator sedang dihubungkan untuk menangani deteksi guncangan.",
+        tone: "success",
       });
 
       router.replace({
@@ -39,21 +52,42 @@ export default function ReporterEmergencyAlert() {
         error instanceof Error ? error.message : "Terjadi kesalahan.",
       );
       sendingRef.current = false;
+      setSending(false);
     }
-  }, [createReport]);
+  }, [createReport, showNotification]);
+
+  const handleCancel = useCallback(() => {
+    cancelledRef.current = true;
+    sendingRef.current = true;
+    setSending(true);
+    snoozeShakeEmergencyAlert();
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+
+    router.replace("/reporter/dashboard" as Href);
+  }, []);
 
   useEffect(() => {
+    if (cancelledRef.current) return;
+
     if (countdown <= 0) {
       handleSensorReport();
       return;
     }
 
-    const timer = setTimeout(() => {
+    timerRef.current = setTimeout(() => {
+      if (cancelledRef.current) return;
       setCountdown((current) => Math.max(0, current - 1));
     }, 1000);
 
     return () => {
-      clearTimeout(timer);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [countdown, handleSensorReport]);
 
@@ -62,7 +96,7 @@ export default function ReporterEmergencyAlert() {
       role="reporter"
       title="Peringatan Darurat"
       subtitle="Sensor mendeteksi kondisi tidak biasa."
-      action={<IconButton icon="close" onPress={() => navigateTo("/reporter/tracking" as Href)} />}
+      action={<IconButton icon="close" disabled={sending} onPress={handleCancel} />}
     >
       <View style={styles.alertPanel}>
         <View style={styles.ringOuter}>
@@ -88,12 +122,14 @@ export default function ReporterEmergencyAlert() {
           label="Ya, kirim bantuan sekarang"
           icon="ambulance"
           tone="danger"
+          disabled={sending}
           onPress={handleSensorReport}
         />
         <PrimaryAction
           label="Batalkan"
           tone="soft"
-          onPress={() => navigateTo("/reporter/tracking" as Href)}
+          disabled={sending}
+          onPress={handleCancel}
         />
       </View>
     </ScreenShell>

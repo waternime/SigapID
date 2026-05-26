@@ -1,5 +1,7 @@
 export type UserRole = "reporter" | "dispatcher";
 
+export type UnitType = "police" | "ambulance" | "firefighter";
+
 export type EmergencyType =
   | "fire"
   | "medical"
@@ -30,6 +32,14 @@ export type OperatorAssignmentStatus =
   | "released"
   | "completed";
 
+export type UnitDispatchStatus =
+  | "sent"
+  | "accepted"
+  | "on_route"
+  | "arrived"
+  | "completed"
+  | "cancelled";
+
 export type MessageKind = "text" | "voice" | "image" | "system";
 
 export interface Profile {
@@ -40,6 +50,7 @@ export interface Profile {
   phone: string | null;
   address: string | null;
   role: UserRole;
+  unit_type: UnitType | null;
   avatar_url: string | null;
   is_available: boolean;
   last_active_at: string | null;
@@ -117,6 +128,30 @@ export interface OperatorAssignment {
   accepted_at: string | null;
   released_at: string | null;
   completed_at: string | null;
+}
+
+export interface UnitDispatch {
+  id: string;
+  report_id: string;
+  dispatcher_id: string;
+  responder_id: string | null;
+  unit_type: UnitType;
+  status: UnitDispatchStatus;
+  assigned_at: string;
+  accepted_at: string | null;
+  departed_at: string | null;
+  arrived_at: string | null;
+  completed_at: string | null;
+  current_latitude: number | null;
+  current_longitude: number | null;
+  current_accuracy: number | null;
+  last_location_at: string | null;
+  unit_operator?: Pick<
+    Profile,
+    "id" | "full_name" | "phone" | "email" | "unit_type"
+  > | null;
+  dispatcher?: Pick<Profile, "id" | "full_name" | "phone" | "email"> | null;
+  report?: EmergencyWithReporter | null;
 }
 
 export interface Message {
